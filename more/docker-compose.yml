@@ -1,0 +1,52 @@
+name: pwl-more
+
+services:
+  pwl-more-db:
+    image: postgres:16-alpine
+    container_name: pwl-more-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pwl_more
+      POSTGRES_USER: pwl_more
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - /var/lib/pwl-more/db:/var/lib/postgresql/data
+    networks:
+      - pwl-more-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pwl_more -d pwl_more"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pwl-more-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: pwl-more-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3000"
+    environment:
+      DATABASE_URL: "postgresql://pwl_more:${DB_PASSWORD}@pwl-more-db:5432/pwl_more"
+      SESSION_SECRET: ${SESSION_SECRET}
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@peoplewelike.club}
+      NEXT_PUBLIC_BASE_URL: https://more.peoplewelike.club
+      UPLOAD_DIR: /data/uploads
+      NODE_ENV: production
+    volumes:
+      - /var/lib/pwl-more/uploads:/data/uploads
+    depends_on:
+      pwl-more-db:
+        condition: service_healthy
+    networks:
+      - pwl-more-net
+
+networks:
+  pwl-more-net:
+    name: pwl-more-net
+    driver: bridge
