@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server'
-import bcrypt from 'bcryptjs'
+import { timingSafeEqual } from 'crypto'
 import { getAdminSession } from '@/lib/admin-session'
 
 export const dynamic = 'force-dynamic'
@@ -11,15 +11,22 @@ export async function POST(req: NextRequest) {
   }
 
   const adminEmail = process.env.ADMIN_EMAIL ?? ''
-  const adminHash  = process.env.ADMIN_PASSWORD_HASH ?? ''
-  if (!adminEmail || !adminHash) {
+  const adminPassword = process.env.ADMIN_PASSWORD ?? ''
+  if (!adminEmail || !adminPassword) {
     return NextResponse.json({ error: 'Admin not configured' }, { status: 503 })
   }
 
-  const emailMatch = body.email === adminEmail
-  const fakeHash = '$2a$12$fakehashfakehashfakehashfakehashfakehashfake'
-  const valid = await bcrypt.compare(String(body.password), emailMatch ? adminHash : fakeHash)
-  if (!emailMatch || !valid) {
+  const emailBuf = Buffer.from(body.email)
+  const adminEmailBuf = Buffer.from(adminEmail)
+  const pwdBuf = Buffer.from(String(body.password))
+  const adminPwdBuf = Buffer.from(adminPassword)
+
+  const emailMatch = emailBuf.length === adminEmailBuf.length &&
+    timingSafeEqual(emailBuf, adminEmailBuf)
+  const pwdMatch = pwdBuf.length === adminPwdBuf.length &&
+    timingSafeEqual(pwdBuf, adminPwdBuf)
+
+  if (!emailMatch || !pwdMatch) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
