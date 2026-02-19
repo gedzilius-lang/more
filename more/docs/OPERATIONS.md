@@ -1,40 +1,76 @@
-# Operations — pwl-more
+# Operations Guide — PWL More
 
-## Infrastructure
-| | Value |
-|--|--|
-| VPS | 72.60.181.89 |
-| Domain | more.peoplewelike.club |
-| Repo | /opt/pwl-more |
-| Docker project | pwl-more |
-| App container | pwl-more-app |
-| DB container | pwl-more-db |
-| Host port | 127.0.0.1:3100 |
-| Uploads | /var/lib/pwl-more/uploads |
-| DB data | /var/lib/pwl-more/db |
-| Nginx vhost | /etc/nginx/sites-enabled/more.peoplewelike.club.conf |
+## Architecture
+- **App:** Next.js 14 App Router (standalone output)
+- **DB:** Postgres 16 (Docker volume: `/var/lib/pwl-more/db`)
+- **Uploads:** `/var/lib/pwl-more/uploads`
+- **Port:** `127.0.0.1:3100` → nginx → `https://more.peoplewelike.club`
+- **Containers:** `pwl-more-app`, `pwl-more-db` (project: `pwl-more`)
 
-## DO NOT TOUCH
-- /opt/radijas-v2 (radio)
-- Port 1935 (radio RTMP)
-- Port 8080 (radio HTTP)
-- /etc/nginx/sites-enabled/radio.peoplewelike.club.conf
+## Environment Variables
+All vars in `/opt/pwl-more/more/.env`:
 
-## Tech decisions
-- ORM: Drizzle (SQL-like, fast migrations)
-- Hashing: bcrypt 12 rounds
-- Sessions: iron-session (signed httpOnly cookies)
-- Images: sharp (resize 256/512/1024, EXIF strip)
-- QR: qrcode (SVG on-demand)
-- Email: nodemailer SMTP
+| Var | Required | Description |
+|-----|----------|-------------|
+| `DB_PASSWORD` | Yes | Postgres password |
+| `SESSION_SECRET` | Yes | iron-session signing key (min 32 chars) |
+| `ADMIN_EMAIL` | Yes | Admin login email |
+| `ADMIN_PASSWORD` | Yes | Admin login password (plaintext, stored only in .env) |
+| `SMTP_HOST` | For email | SMTP server hostname |
+| `SMTP_PORT` | For email | SMTP port (587 or 465) |
+| `SMTP_USER` | For email | SMTP username |
+| `SMTP_PASS` | For email | SMTP password |
+| `SMTP_FROM` | For email | From address |
+| `NEXT_PUBLIC_BASE_URL` | Yes | Public URL (https://more.peoplewelike.club) |
 
-## Env vars (/opt/pwl-more/more/.env)
-- DB_PASSWORD
-- SESSION_SECRET (32+ chars)
-- SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+> **Note:** `ADMIN_PASSWORD` uses constant-time comparison (not bcrypt) because bcrypt hash output
+> contains `$` characters that docker compose interpolates as env var references.
+
+## Admin Auth Method
+- Route: `POST /api/admin/login` with `{ email, password }`
+- Verifies email + password against `ADMIN_EMAIL` + `ADMIN_PASSWORD` env vars
+- Uses `crypto.timingSafeEqual` to prevent timing attacks
+- Sets `pwl-admin-session` iron-session cookie (8h TTL, httpOnly, secure)
+- Separate from per-card `pwl-more-session` (7d TTL)
+
+## Redeploy
+```bash
+cd /opt/pwl-more
+git pull
+cd more
+docker compose up -d --build
+```
+
+## DB Migration (manual)
+Migrations are applied manually via psql:
+```bash
+docker exec -i pwl-more-db psql -U pwl_more -d pwl_more << 'SQL'
+-- Example: add new table
+CREATE TABLE IF NOT EXISTS ...;
+SQL
+```
+
+## Current Tables
+| Table | Purpose |
+|-------|---------|
+| `cards` | User digital business cards |
+| `events` | Analytics (page views, link clicks) |
+| `links` | Legacy link rows (superseded by configJson) |
+| `reset_tokens` | Email-based pincode reset tokens |
+| `invites` | Admin-generated invite links |
+
+## Backup
+```bash
+docker exec pwl-more-db pg_dump -U pwl_more pwl_more > /tmp/pwl_more_$(date +%Y%m%d).sql
+```
 
 ## Logs
 ```bash
-docker logs pwl-more-app -f
-docker logs pwl-more-db
+docker logs pwl-more-app --tail 100 -f
+```
+
+## Health Check
+```bash
+curl https://more.peoplewelike.club/health
+# → {"ok":true}
 ```
