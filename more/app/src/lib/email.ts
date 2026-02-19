@@ -30,3 +30,12 @@ export async function sendResetEmail(opts: { to: string; username: string; token
     html: `<p>Reset: <a href="${resetUrl}">${resetUrl}</a></p><p>Expires in 30 minutes.</p>`,
   })
 }
+
+export async function sendEmail(opts: { to: string; subject: string; html: string; text?: string }) {
+  await transporter.sendMail({
+    from: FROM, to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+  })
+}

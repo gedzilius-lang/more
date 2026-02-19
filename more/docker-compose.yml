@@ -42,6 +42,8 @@ services:
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
     volumes:
       - /var/lib/pwl-more/uploads:/data/uploads
+    env_file:
+      - .env
     depends_on:
       pwl-more-db:
         condition: service_healthy
