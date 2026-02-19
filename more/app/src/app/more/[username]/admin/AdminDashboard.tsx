@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from "react"
+import { useState, useRef, useTransition } from "react"
 import { v4 as uuidv4 } from "uuid"
 import type { CardConfig, Block } from "@/lib/schema"
 
@@ -9,15 +9,26 @@ interface Analytics {
   topLinks: Array<{ key: string; count: number }>
   dailyTrend: Array<{ date: string; count: number }>
 }
-interface Props { username: string; cardId: string; config: CardConfig; analytics: Analytics; base: string }
+interface Props {
+  username: string; cardId: string; config: CardConfig
+  analytics: Analytics; base: string; isAdmin?: boolean
+}
 
-export default function AdminDashboard({ username, config: initialConfig, analytics, base }: Props) {
+export default function AdminDashboard({ username, config: initialConfig, analytics, base, isAdmin }: Props) {
   const [config, setConfig] = useState<CardConfig>(initialConfig)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
-  const [tab, setTab] = useState<'editor' | 'analytics' | 'qr'>('editor')
+  const [tab, setTab] = useState<'editor' | 'analytics' | 'qr' | 'security'>('editor')
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
+
+  // security tab state
+  const [curPin, setCurPin] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [pinMsg, setPinMsg] = useState('')
+  const [pinOk, setPinOk] = useState(true)
+  const [pinPending, startPin] = useTransition()
 
   async function saveConfig(next: CardConfig) {
     setSaving(true); setMsg('')
@@ -86,6 +97,27 @@ export default function AdminDashboard({ username, config: initialConfig, analyt
     setUploadingIdx(null)
   }
 
+  async function changePincode(e: React.FormEvent) {
+    e.preventDefault()
+    if (newPin !== confirmPin) { setPinOk(false); setPinMsg('Pincodes do not match'); return }
+    if (newPin.length < 4) { setPinOk(false); setPinMsg('Pincode must be at least 4 characters'); return }
+    setPinMsg('')
+    startPin(async () => {
+      const r = await fetch(`/api/card/${username}/pincode`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPincode: curPin, newPincode: newPin }),
+      })
+      const d = await r.json()
+      if (r.ok) {
+        setPinOk(true); setPinMsg('Pincode changed successfully!')
+        setCurPin(''); setNewPin(''); setConfirmPin('')
+        setTimeout(() => setPinMsg(''), 3000)
+      } else {
+        setPinOk(false); setPinMsg(d.error ?? 'Failed to change pincode')
+      }
+    })
+  }
+
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '8px 20px', cursor: 'pointer', border: 'none',
     background: active ? 'var(--accent)' : 'transparent',
@@ -96,13 +128,21 @@ export default function AdminDashboard({ username, config: initialConfig, analyt
     <div style={{ maxWidth: 'var(--max-w)', margin: '0 auto', padding: '24px 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 22, color: 'var(--accent)' }}>/{username} Admin</h1>
-        <a href={`/more/${username}`} style={{ color: 'var(--accent)', fontSize: 14 }}>View card</a>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {isAdmin && (
+            <a href="/admin" style={{ color: 'var(--accent)', fontSize: 13, fontWeight: 700 }}>
+              Admin Panel
+            </a>
+          )}
+          <a href={`/more/${username}`} style={{ color: 'var(--accent)', fontSize: 14 }}>View card</a>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
         <button style={tabStyle(tab === 'editor')} onClick={() => setTab('editor')}>Editor</button>
         <button style={tabStyle(tab === 'analytics')} onClick={() => setTab('analytics')}>Analytics</button>
         <button style={tabStyle(tab === 'qr')} onClick={() => setTab('qr')}>QR Code</button>
+        <button style={tabStyle(tab === 'security')} onClick={() => setTab('security')}>Security</button>
       </div>
 
       {msg && (
@@ -291,6 +331,55 @@ export default function AdminDashboard({ username, config: initialConfig, analyt
           <p style={{ marginTop: 20, color: 'var(--muted)', fontSize: 13 }}>
             Card URL: <code style={{ color: 'var(--accent)' }}>{base}/more/{username}</code>
           </p>
+        </div>
+      )}
+
+      {tab === 'security' && (
+        <div>
+          <div className="card" style={{ marginBottom: 20 }}>
+            <h3 style={{ margin: '0 0 16px', fontWeight: 700, fontSize: 16 }}>Change Pincode</h3>
+            <form onSubmit={changePincode} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="field">
+                <label className="label">Current pincode</label>
+                <input className="input" type="password" value={curPin}
+                  onChange={e => setCurPin(e.target.value)} placeholder="Enter current pincode" />
+              </div>
+              <div className="field">
+                <label className="label">New pincode</label>
+                <input className="input" type="password" value={newPin}
+                  onChange={e => setNewPin(e.target.value)} minLength={4} required
+                  placeholder="Min 4 characters" />
+              </div>
+              <div className="field">
+                <label className="label">Confirm new pincode</label>
+                <input className="input" type="password" value={confirmPin}
+                  onChange={e => setConfirmPin(e.target.value)} minLength={4} required
+                  placeholder="Repeat new pincode" />
+              </div>
+              {pinMsg && (
+                <div style={{
+                  padding: '10px 14px', borderRadius: 8,
+                  background: pinOk ? '#00ff9922' : '#ff003322',
+                  color: pinOk ? 'var(--accent)' : '#ff6666',
+                  border: '1px solid currentColor', fontSize: 14,
+                }}>{pinMsg}</div>
+              )}
+              <button className="btn btn-primary" type="submit" disabled={pinPending}
+                style={{ alignSelf: 'flex-start' }}>
+                {pinPending ? 'Saving...' : 'Change Pincode'}
+              </button>
+            </form>
+          </div>
+
+          <div className="card">
+            <h3 style={{ margin: '0 0 12px', fontWeight: 700, fontSize: 16 }}>Forgot your pincode?</h3>
+            <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 16 }}>
+              Request a reset link to be sent to your registered email address.
+            </p>
+            <a href={`/more/${username}/reset`} className="btn">
+              Send reset email
+            </a>
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import '../styles/tokens.css'
 import '../styles/ui.css'
+import AdminBar from './AdminBar'
 
 export const metadata: Metadata = {
   title: 'PeopleWeLike',
@@ -15,7 +16,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#0a0a0a" />
       </head>
-      <body>{children}</body>
+      <body>
+        <AdminBar />
+        {children}
+      </body>
     </html>
   )
 }

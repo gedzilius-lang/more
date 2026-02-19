@@ -38,6 +38,8 @@ services:
       NEXT_PUBLIC_BASE_URL: https://more.peoplewelike.club
       UPLOAD_DIR: /data/uploads
       NODE_ENV: production
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
     volumes:
       - /var/lib/pwl-more/uploads:/data/uploads
     depends_on:

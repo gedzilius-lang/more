@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { requireAuth } from '@/lib/session'
+import { requireAdminAuth } from '@/lib/admin-session'
 import { db, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import type { CardConfig } from '@/lib/schema'
@@ -17,8 +18,9 @@ export default async function AdminPage({ params }: Props) {
     .where(eq(schema.cards.username, params.username)).limit(1)
   if (!card) redirect('/')
 
+  const adminSession = await requireAdminAuth()
+
   const now = new Date()
-  const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
   const allEvents = await db.select({
     type: schema.events.type,
@@ -57,6 +59,7 @@ export default async function AdminPage({ params }: Props) {
       config={card.configJson as CardConfig}
       analytics={{ clicksTotal, viewsTotal, topLinks, dailyTrend }}
       base={base}
+      isAdmin={!!adminSession}
     />
   )
 }

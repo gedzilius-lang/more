@@ -63,7 +63,19 @@ export interface CardConfig {
   blocks: Block[]
 }
 
+export const invites = pgTable('invites', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  email:     text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  used:      boolean('used').default(false).notNull(),
+  usedAt:    timestamp('used_at', { withTimezone: true }),
+  cardId:    uuid('card_id').references(() => cards.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 export type Card    = typeof cards.$inferSelect
 export type NewCard = typeof cards.$inferInsert
 export type Link    = typeof links.$inferSelect
 export type Event   = typeof events.$inferSelect
+export type Invite  = typeof invites.$inferSelect
