@@ -14,7 +14,7 @@ export default function LoginForm({ username }: { username: string }) {
     e.preventDefault()
     setError('')
     startTransition(async () => {
-      const res = await fetch(`/more/${username}/login`, {
+      const res = await fetch(`/api/card/${username}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, pincode: pin }),
@@ -42,7 +42,7 @@ export default function LoginForm({ username }: { username: string }) {
       </div>
       {error && <div className="msg-error">{error}</div>}
       <button className="btn btn-primary" style={{ width: '100%', marginTop: 16 }} disabled={pending}>
-        {pending ? 'Logging in…' : 'Login'}
+        {pending ? 'Logging in...' : 'Login'}
       </button>
     </form>
   )

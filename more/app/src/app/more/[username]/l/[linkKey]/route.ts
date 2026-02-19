@@ -9,26 +9,23 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest, { params }: { params: { username: string; linkKey: string } }) {
   const [card] = await db.select().from(schema.cards)
     .where(eq(schema.cards.username, params.username)).limit(1)
-  if (\!card) return new NextResponse('Not found', { status: 404 })
+  if (!card) return new NextResponse('Not found', { status: 404 })
 
   const config = card.configJson as CardConfig
   let targetUrl: string | null = null
 
   for (const block of config.blocks) {
-    if (block.type === 'links') {
-      const d = block.data as { links?: Array<{ key: string; url: string }> }
-      const link = d.links?.find(l => l.key === params.linkKey)
-      if (link) { targetUrl = link.url; break }
+    if (block.type === 'link' && block.key === params.linkKey) {
+      targetUrl = block.url
+      break
     }
     if (block.type === 'contact') {
-      const d = block.data as { items?: Array<{ type: string; value: string }> }
-      const item = d.items?.find(i => `contact-${i.type}` === params.linkKey)
-      if (item) {
-        const v = item.value
-        if (item.type === 'email') targetUrl = `mailto:${v}`
-        else if (item.type === 'phone') targetUrl = `tel:${v}`
-        else if (item.type === 'whatsapp') targetUrl = `https://wa.me/${v.replace(/\D/g,'')}`
-        else targetUrl = v
+      if (params.linkKey === 'contact-email' && block.email) {
+        targetUrl = `mailto:${block.email}`
+        break
+      }
+      if (params.linkKey === 'contact-phone' && block.phone) {
+        targetUrl = `tel:${block.phone}`
         break
       }
     }
@@ -45,6 +42,6 @@ export async function GET(req: NextRequest, { params }: { params: { username: st
     ipHash,
   })
 
-  if (\!targetUrl) return new NextResponse('Link not found', { status: 404 })
+  if (!targetUrl) return new NextResponse('Link not found', { status: 404 })
   return NextResponse.redirect(targetUrl, { status: 302 })
 }

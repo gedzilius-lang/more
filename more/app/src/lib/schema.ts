@@ -49,20 +49,21 @@ export const resetTokens = pgTable('reset_tokens', {
   used:      boolean('used').default(false).notNull(),
 })
 
-export interface Block {
-  id: string
-  type: 'profile' | 'links' | 'text' | 'image' | 'gallery' | 'embed' | 'contact' | 'qr'
-  title?: string
-  is_hidden: boolean
-  data: Record<string, unknown>
-}
+export type ProfileBlock  = { id: string; type: 'profile';  name: string; bio?: string; avatar?: string; hidden?: boolean }
+export type LinkBlock     = { id: string; type: 'link';     key: string; label: string; url: string; icon?: string; hidden?: boolean }
+export type TextBlock     = { id: string; type: 'text';     markdown: string; hidden?: boolean }
+export type ImageBlock    = { id: string; type: 'image';    src: string; alt?: string; hidden?: boolean }
+export type ContactBlock  = { id: string; type: 'contact';  email?: string; phone?: string; hidden?: boolean }
+export type QRBlock       = { id: string; type: 'qr';       hidden?: boolean }
+
+export type Block = ProfileBlock | LinkBlock | TextBlock | ImageBlock | ContactBlock | QRBlock
 
 export interface CardConfig {
-  theme: string
+  theme?: 'dark' | 'light' | 'neon'
   blocks: Block[]
 }
 
-export type Card = typeof cards.$inferSelect
+export type Card    = typeof cards.$inferSelect
 export type NewCard = typeof cards.$inferInsert
-export type Link = typeof links.$inferSelect
-export type Event = typeof events.$inferSelect
+export type Link    = typeof links.$inferSelect
+export type Event   = typeof events.$inferSelect

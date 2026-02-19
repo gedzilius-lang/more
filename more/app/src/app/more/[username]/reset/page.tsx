@@ -11,7 +11,7 @@ export default function ResetPage({ params }: { params: { username: string } }) 
     setError('')
     const email = (e.currentTarget.elements.namedItem('email') as HTMLInputElement).value
     start(async () => {
-      const res = await fetch(`/more/${params.username}/reset`, {
+      const res = await fetch(`/api/card/${params.username}/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -35,13 +35,13 @@ export default function ResetPage({ params }: { params: { username: string } }) 
             </div>
             {error && <div className="msg-error">{error}</div>}
             <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} disabled={pending}>
-              {pending ? 'Sending…' : 'Send reset link'}
+              {pending ? 'Sending...' : 'Send reset link'}
             </button>
           </form>
         )}
       </div>
       <div className="card-footer">
-        <a href={`/more/${params.username}/login`}>← back to login</a>
+        <a href={`/more/${params.username}/login`}>back to login</a>
       </div>
     </div>
   )

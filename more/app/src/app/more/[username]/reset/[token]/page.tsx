@@ -13,7 +13,7 @@ export default function ResetTokenPage({ params }: { params: { username: string;
     setError('')
     const pin = (e.currentTarget.elements.namedItem('pincode') as HTMLInputElement).value
     start(async () => {
-      const res = await fetch(`/more/${params.username}/reset/${params.token}`, {
+      const res = await fetch(`/api/card/${params.username}/reset/${params.token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pincode: pin }),
@@ -33,7 +33,7 @@ export default function ResetTokenPage({ params }: { params: { username: string;
       <div className="card">
         <h2 style={{ marginBottom: 16, fontWeight: 700 }}>Set New Pincode</h2>
         {done ? (
-          <p className="msg-ok">Pincode updated! Redirecting…</p>
+          <p className="msg-ok">Pincode updated! Redirecting...</p>
         ) : (
           <form onSubmit={submit}>
             <div className="field">
@@ -42,7 +42,7 @@ export default function ResetTokenPage({ params }: { params: { username: string;
             </div>
             {error && <div className="msg-error">{error}</div>}
             <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} disabled={pending}>
-              {pending ? 'Saving…' : 'Set Pincode'}
+              {pending ? 'Saving...' : 'Set Pincode'}
             </button>
           </form>
         )}

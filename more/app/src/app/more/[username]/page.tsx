@@ -27,7 +27,7 @@ export default async function CardPage({ params }: Props) {
   if (!card || !card.published) notFound()
 
   const config = card.configJson as CardConfig
-  const blocks = config.blocks.filter(b => !b.is_hidden)
+  const blocks = config.blocks.filter(b => !b.hidden)
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://more.peoplewelike.club'
 
   return (
@@ -45,86 +45,72 @@ export default async function CardPage({ params }: Props) {
 function BlockRenderer({ block, username, base }: { block: Block; username: string; base: string }) {
   switch (block.type) {
     case 'profile': return <ProfileBlock block={block} />
-    case 'links': return <LinksBlock block={block} username={username} base={base} />
-    case 'text': return <TextBlock block={block} />
-    case 'image': return <ImageBlock block={block} />
-    case 'contact': return <ContactBlock block={block} username={username} base={base} />
-    case 'qr': return <QRBlock username={username} base={base} />
-    default: return null
+    case 'link':    return <LinkBlock block={block} username={username} base={base} />
+    case 'text':    return <TextBlock block={block} />
+    case 'image':   return <ImageBlock block={block} />
+    case 'contact': return <ContactBlock block={block} />
+    case 'qr':      return <QRBlock username={username} />
+    default:        return null
   }
 }
 
-function ProfileBlock({ block }: { block: Block }) {
-  const d = block.data as { display_name?: string; title?: string; bio?: string; avatar_url?: string }
+function ProfileBlock({ block }: { block: Extract<Block, { type: 'profile' }> }) {
   return (
     <div className="card card-glow">
       <div className="profile-header">
-        {d.avatar_url && <img src={d.avatar_url} alt={d.display_name ?? 'avatar'} className="avatar" />}
-        {d.display_name && <div className="name">{d.display_name}</div>}
-        {d.title && <div className="title">{d.title}</div>}
-        {d.bio && <div className="bio">{d.bio}</div>}
+        {block.avatar && <img src={block.avatar} alt={block.name} className="avatar" />}
+        {block.name && <div className="name">{block.name}</div>}
+        {block.bio && <div className="bio">{block.bio}</div>}
       </div>
     </div>
   )
 }
 
-function LinksBlock({ block, username, base }: { block: Block; username: string; base: string }) {
-  const d = block.data as { links?: Array<{ key: string; label: string; icon?: string }> }
-  if (!d.links?.length) return null
+function LinkBlock({ block, username, base }: { block: Extract<Block, { type: 'link' }>; username: string; base: string }) {
+  if (!block.url) return null
+  return (
+    <a href={`${base}/more/${username}/l/${block.key}`} className="link-item" rel="noopener noreferrer">
+      {block.icon && <span>{block.icon}</span>}
+      {block.label}
+    </a>
+  )
+}
+
+function TextBlock({ block }: { block: Extract<Block, { type: 'text' }> }) {
+  if (!block.markdown) return null
   return (
     <div className="card">
-      {block.title && <div className="section-heading">{block.title}</div>}
-      <div className="block-list">
-        {d.links.map(link => (
-          <a key={link.key} href={`${base}/more/${username}/l/${link.key}`}
-            className="link-item" rel="noopener noreferrer">
-            {link.icon && <span>{link.icon}</span>}
-            {link.label}
-          </a>
-        ))}
-      </div>
+      <p style={{ color: 'var(--text2)', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{block.markdown}</p>
     </div>
   )
 }
 
-function TextBlock({ block }: { block: Block }) {
-  const d = block.data as { content?: string }
-  if (!d.content) return null
-  return (
-    <div className="card">
-      {block.title && <div className="section-heading">{block.title}</div>}
-      <p style={{ color: 'var(--text2)', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{d.content}</p>
-    </div>
-  )
-}
-
-function ImageBlock({ block }: { block: Block }) {
-  const d = block.data as { url?: string; alt?: string }
-  if (!d.url) return null
+function ImageBlock({ block }: { block: Extract<Block, { type: 'image' }> }) {
+  if (!block.src) return null
   return (
     <div className="card" style={{ textAlign: 'center' }}>
-      {block.title && <div className="section-heading">{block.title}</div>}
-      <img src={d.url} alt={d.alt ?? ''} style={{ maxWidth: '100%', borderRadius: 'var(--radius-sm)' }} />
+      <img src={block.src} alt={block.alt ?? ''} style={{ maxWidth: '100%', borderRadius: 'var(--radius-sm)' }} />
     </div>
   )
 }
 
-function ContactBlock({ block, username, base }: { block: Block; username: string; base: string }) {
-  const d = block.data as { items?: Array<{ type: string; label: string; value: string }> }
-  if (!d.items?.length) return null
+function ContactBlock({ block }: { block: Extract<Block, { type: 'contact' }> }) {
+  const items: Array<{ label: string; href: string }> = []
+  if (block.email) items.push({ label: block.email, href: `mailto:${block.email}` })
+  if (block.phone) items.push({ label: block.phone, href: `tel:${block.phone}` })
+  if (!items.length) return null
   return (
     <div className="card">
-      {block.title && <div className="section-heading">{block.title}</div>}
       <div className="block-list">
-        {d.items.map((item, i) => (
-          <a key={i} href={`${base}/more/${username}/l/contact-${item.type}`} className="link-item">{item.label}</a>
+        {items.map((item, i) => (
+          <a key={i} href={item.href} className="link-item">{item.label}</a>
         ))}
       </div>
     </div>
   )
 }
 
-function QRBlock({ username, base }: { username: string; base: string }) {
+function QRBlock({ username }: { username: string }) {
   return (
     <div className="card qr-box">
       <div className="section-heading">QR Code</div>
